@@ -7,8 +7,16 @@ from mods.log_control import VoiceChangaerLogger
 logger = VoiceChangaerLogger.get_instance().getLogger()
 
 
+def _maybe_hf_mirror(url: str) -> str:
+    """国内网络：HF_ENDPOINT=https://hf-mirror.com 时改写 huggingface.co 直链。"""
+    endpoint = os.environ.get("HF_ENDPOINT", "").rstrip("/")
+    if endpoint and "huggingface.co" in url:
+        return url.replace("https://huggingface.co", endpoint).replace("http://huggingface.co", endpoint)
+    return url
+
+
 def download(params):
-    url = params["url"]
+    url = _maybe_hf_mirror(params["url"])
     saveTo = params["saveTo"]
     position = params["position"]
     dirname = os.path.dirname(saveTo)
@@ -39,7 +47,7 @@ def download(params):
 
 
 def download_no_tqdm(params):
-    url = params["url"]
+    url = _maybe_hf_mirror(params["url"])
     saveTo = params["saveTo"]
     dirname = os.path.dirname(saveTo)
     if dirname != "":

@@ -141,6 +141,25 @@ class VoiceChangerManager(ServerDeviceCallbacks):
             return info
         else:
             # アップローダ
+            # local-custom: validate BEFORE deleting anything. The original
+            # flow rmtree'd the slot first and then shutil.move()'d from
+            # upload_dir — a request without a prior upload destroyed the
+            # slot (file never came back). Fail early instead.
+            missing = [
+                f.name
+                for f in params.files
+                if not os.path.isfile(os.path.join(UPLOAD_DIR, f.dir, f.name))
+            ]
+            if missing:
+                msg = (
+                    f"loadModel rejected: source file(s) not in upload_dir "
+                    f"(missing: {', '.join(missing)}). Slot was NOT modified. "
+                    f"Upload the file via /upload_file first, or use "
+                    f"isSampleMode to download an official sample."
+                )
+                logger.error(f"[Voice Changer] {msg}")
+                return {"status": "ERROR", "msg": msg}
+
             # ファイルをslotにコピー
             slotDir = os.path.join(
                 self.params.model_dir,

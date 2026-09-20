@@ -35,7 +35,7 @@ from .models.utils import (
     get_hubert_content,
 )
 from .models.cluster import get_cluster_model, get_cluster_center_result
-from fairseq import checkpoint_utils
+from voice_changer.RVC.embedder._fairseq_guard import checkpoint_utils  # local-custom: lazy/optional fairseq
 import librosa
 
 from Exceptions import NoModeLoadedException

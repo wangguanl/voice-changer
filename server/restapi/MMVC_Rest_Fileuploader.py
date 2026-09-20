@@ -87,15 +87,23 @@ class MMVC_Rest_Fileuploader:
             print("paramDict", paramDict)
             loadModelparams = LoadModelParams(**paramDict)
             loadModelparams.files = [LoadModelParamFile(**x) for x in paramDict["files"]]
-            # print("paramDict", loadModelparams)
 
             info = self.voiceChangerManager.loadModel(loadModelparams)
             json_compatible_item_data = jsonable_encoder(info)
             return JSONResponse(content=json_compatible_item_data)
         except Exception as e:
-            print("[Voice Changer] post_load_model ex:", e)
+            # local-custom: never swallow into None — the original handler
+            # printed the trace and fell through to `return str(e)` *outside*
+            # the try (returning null/None when the except path was async).
+            # Surface a proper error JSON so clients can see the failure.
             import traceback
+            import sys
+            print("[Voice Changer] post_load_model ex:", e)
             traceback.print_exc()
+            return JSONResponse(
+                content={"status": "ERROR", "msg": f"{type(e).__name__}: {e}"},
+                status_code=400,
+            )
             
     def get_onnx(self):
         try:

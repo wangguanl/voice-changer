@@ -1,7 +1,9 @@
 import torch
 from torch import device
 from voice_changer.RVC.embedder.Embedder import Embedder
-from fairseq import checkpoint_utils
+from voice_changer.RVC.embedder._fairseq_guard import checkpoint_utils, FAIRSEQ_AVAILABLE
+if not FAIRSEQ_AVAILABLE:
+    raise ImportError("fairseq is not installed — use the ONNX contentvec path (content_vec_500_onnx_on=true) or install fairseq")
 
 
 class FairseqHubert(Embedder):

@@ -2,9 +2,6 @@ from torch import device
 
 from const import EmbedderType
 from voice_changer.RVC.embedder.Embedder import Embedder
-from voice_changer.RVC.embedder.FairseqContentvec import FairseqContentvec
-from voice_changer.RVC.embedder.FairseqHubert import FairseqHubert
-from voice_changer.RVC.embedder.FairseqHubertJp import FairseqHubertJp
 from voice_changer.RVC.embedder.OnnxContentvec import OnnxContentvec
 from voice_changer.RVC.embedder.Whisper import Whisper
 from voice_changer.utils.VoiceChangerParams import VoiceChangerParams
@@ -19,6 +16,15 @@ class EmbedderManager:
         cls.params = params
 
     @classmethod
+    def _fairseq(cls, which: str):
+        # local-custom: lazy imports — fairseq is optional (ONNX contentvec
+        # path works without it); an eager top-level import broke slots
+        import importlib
+
+        mod = importlib.import_module(f"voice_changer.RVC.embedder.{which}")
+        return getattr(mod, which)
+
+    @classmethod
     def getEmbedder(cls, embederType: EmbedderType, isHalf: bool, dev: device) -> Embedder:
         if cls.currentEmbedder is None:
             print("[Voice Changer] generate new embedder. (no embedder)")
@@ -29,9 +35,6 @@ class EmbedderManager:
         else:
             print("[Voice Changer] generate new embedder. (anyway)")
             cls.currentEmbedder = cls.loadEmbedder(embederType, isHalf, dev)
-
-            # cls.currentEmbedder.setDevice(dev)
-            # cls.currentEmbedder.setHalf(isHalf)
         return cls.currentEmbedder
 
     @classmethod
@@ -45,10 +48,10 @@ class EmbedderManager:
             except Exception as e:  # noqa
                 print("[Voice Changer] use torch contentvec", e)
                 file = cls.params.hubert_base
-                return FairseqHubert().loadModel(file, dev, isHalf)
+                return cls._fairseq("FairseqHubert")().loadModel(file, dev, isHalf)
         elif embederType == "hubert-base-japanese":
             file = cls.params.hubert_base_jp
-            return FairseqHubertJp().loadModel(file, dev, isHalf)
+            return cls._fairseq("FairseqHubertJp")().loadModel(file, dev, isHalf)
         elif embederType == "contentvec":
             try:
                 if cls.params.content_vec_500_onnx_on is False:
@@ -58,9 +61,10 @@ class EmbedderManager:
             except Exception as e:
                 print(e)
                 file = cls.params.hubert_base
-                return FairseqContentvec().loadModel(file, dev, isHalf)
+                return cls._fairseq("FairseqContentvec")().loadModel(file, dev, isHalf)
         elif embederType == "whisper":
             file = cls.params.whisper_tiny
             return Whisper().loadModel(file, dev, isHalf)
         else:
-            return FairseqHubert().loadModel(file, dev, isHalf)
+            file = cls.params.hubert_base
+            return cls._fairseq("FairseqHubert")().loadModel(file, dev, isHalf)
